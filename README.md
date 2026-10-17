@@ -71,24 +71,6 @@ weighted lower than prose, and the glossary and synonyms used to widen each ques
 Every file needs `category`, `patch_date` and `sources` frontmatter, and every `##` section must make
 sense on its own (it is searched and sent to the model alone).
 
-## Deploy (GitHub Pages)
-
-Push to `main` on GitHub, then set **Settings → Pages → Source** to "GitHub Actions". The workflow
-in `.github/workflows/deploy.yml` tests, builds and publishes `dist/`. All paths are relative, so
-any repository name works. Pages serves HTTPS, which the microphone needs.
-
-## Code map
-
-| Path | What it does |
-|---|---|
-| `src/ai/` | The model layer: `VoiceEngine` interface, Gemini Live engine, turn-based engine, providers, model list, error mapping |
-| `src/call/call.ts` | Call orchestration: model choice, quota fallback, bye/silence hang-up, wake word, screenshots |
-| `src/audio/` + `public/worklets/` | Mic capture (16 kHz PCM16) and voice playback (24 kHz) in AudioWorklets, Web Speech wrappers |
-| `src/wake/` | "Hoy Condoriano" fuzzy matching and the listener |
-| `src/knowledge/` | Knowledge base parsing and search |
-| `src/screenshots/` | Image downscaling and the optional folder watcher |
-| `src/components/` | Setup screen, call screen, model picker, settings, toasts |
-
 ## Known limits
 
 - **Wake word:** it uses the browser's speech recognition with fuzzy matching, because Porcupine
