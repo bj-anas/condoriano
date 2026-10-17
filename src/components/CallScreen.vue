@@ -4,6 +4,7 @@ import AppIcon from './AppIcon.vue'
 import VoiceOrb from './VoiceOrb.vue'
 import TranscriptPanel from './TranscriptPanel.vue'
 import { call, firstModel, pauseSpeaking, retryWake, sendScreenshot, toggleCall } from '../call/call'
+import { isIOS } from '../audio/speech'
 import { modelById } from '../ai/models'
 import { isImageFile } from '../screenshots/image'
 import { settings } from '../stores/settings'
@@ -53,15 +54,22 @@ const noScreenshots = computed(() => !!activeModel.value && !activeModel.value.s
 const wakeText = computed(() => {
   switch (call.wake) {
     case 'listening':
-      return { text: 'Listening for “Hoy Condoriano”', tone: 'ok', action: false }
+      return { text: 'Listening for “Hoy Condoriano”', tone: 'ok', action: false, icon: 'dot' as const }
     case 'needs-click':
-      return { text: 'Click anywhere to turn on the wake word', tone: 'warn', action: true }
+      return { text: 'Click anywhere to turn on the wake word', tone: 'warn', action: true, icon: 'pointer' as const }
     case 'blocked':
-      return { text: 'Wake word stopped. Click to retry', tone: 'warn', action: true }
+      return { text: 'Wake word stopped. Click to retry', tone: 'warn', action: true, icon: 'alert' as const }
     case 'unsupported':
-      return { text: 'Wake word needs Chrome or Edge', tone: 'off', action: false }
+      return {
+        text: isIOS() ? 'Wake word isn’t available on iPhone or iPad. Tap the mic' : 'Wake word needs Chrome or Edge',
+        tone: 'off',
+        action: false,
+        icon: 'info' as const,
+      }
     default:
-      return { text: settings.wakeWordEnabled ? 'Wake word paused during the call' : 'Wake word off', tone: 'off', action: false }
+      return settings.wakeWordEnabled
+        ? { text: 'Wake word paused during the call', tone: 'off', action: false, icon: 'pause' as const }
+        : { text: 'Wake word off', tone: 'off', action: false, icon: 'mic-off' as const }
   }
 })
 
@@ -95,17 +103,15 @@ function onFile(e: Event): void {
 <template>
   <div class="screen">
     <header class="top">
-      <h1 class="wordmark">Condoriano</h1>
-      <div class="top-actions">
-        <button type="button" class="chip" @click="openModelPicker()">
-          <AppIcon name="sparkle" :size="16" />
-          <span class="chip-label">{{ modelLabel }}</span>
-          <AppIcon name="chevron-down" :size="16" />
-        </button>
-        <button type="button" class="icon-button" aria-label="Settings" @click="ui.settingsOpen = true">
-          <AppIcon name="settings" />
-        </button>
-      </div>
+      <h1 class="visually-hidden">Condoriano</h1>
+      <button type="button" class="chip" @click="openModelPicker()">
+        <AppIcon name="sparkle" :size="16" />
+        <span class="chip-label">{{ modelLabel }}</span>
+        <AppIcon name="chevron-down" :size="16" />
+      </button>
+      <button type="button" class="icon-button" aria-label="Settings" @click="ui.settingsOpen = true">
+        <AppIcon name="settings" />
+      </button>
     </header>
 
     <main class="stage">
@@ -123,7 +129,8 @@ function onFile(e: Event): void {
         :data-tone="wakeText.tone"
         @click="wakeText.action ? retryWake() : undefined"
       >
-        <span class="dot" aria-hidden="true" />
+        <span v-if="wakeText.icon === 'dot'" class="wake-dot" aria-hidden="true" />
+        <AppIcon v-else :name="wakeText.icon" :size="16" class="wake-icon" />
         {{ wakeText.text }}
       </component>
 
@@ -187,6 +194,15 @@ function onFile(e: Event): void {
   gap: 12px;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .top {
   display: flex;
   align-items: center;
@@ -194,26 +210,6 @@ function onFile(e: Event): void {
   gap: 12px;
   width: min(960px, 100%);
   margin: 0 auto;
-}
-
-.wordmark {
-  flex: none;
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 22px;
-  letter-spacing: 0.04em;
-  color: var(--color-primary);
-
-  @media (min-width: 768px) {
-    font-size: 25px;
-  }
-}
-
-.top-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
 }
 
 .chip {
@@ -299,23 +295,26 @@ function onFile(e: Event): void {
 }
 
 .wake {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: inline-block;
+  max-width: 100%;
   margin: 0;
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--color-outline-variant);
-  background: var(--color-surface-low);
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
   color: var(--color-on-surface-variant);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-align: center;
+  text-wrap: balance;
 
   &:is(button) {
     cursor: pointer;
 
     &:hover {
-      background: var(--color-surface);
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
 
     &:focus-visible {
@@ -324,24 +323,25 @@ function onFile(e: Event): void {
     }
   }
 
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--color-outline);
+  .wake-icon {
+    display: inline-block;
+    margin-inline-end: 6px;
+    vertical-align: -3px;
   }
 
-  &[data-tone='ok'] .dot {
+  .wake-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-inline-end: 8px;
+    vertical-align: 1px;
+    border-radius: 50%;
     background: var(--color-success);
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-success) 20%, transparent);
   }
 
   &[data-tone='warn'] {
     color: var(--color-warning);
-
-    .dot {
-      background: var(--color-warning);
-    }
   }
 }
 

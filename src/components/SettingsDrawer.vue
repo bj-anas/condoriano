@@ -238,7 +238,7 @@ function reset(): void {
         <div class="switch-row">
           <span>
             <span class="label">Listen for “Hoy Condoriano”</span>
-            <span class="help">Needs Chrome or Edge. The browser's speech service hears the mic while this is on.</span>
+            <span class="help">Needs Chrome or Edge on a computer (not available on iPhone or iPad). The browser's speech service hears the mic while this is on.</span>
           </span>
           <ToggleSwitch v-model="settings.wakeWordEnabled" label="Wake word" />
         </div>

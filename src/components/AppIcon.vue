@@ -16,6 +16,8 @@ export type IconName =
   | 'sparkle'
   | 'upload'
   | 'download'
+  | 'mic-off'
+  | 'pointer'
 
 defineProps<{ name: IconName; size?: number }>()
 
@@ -43,6 +45,8 @@ const PATHS: Record<IconName, string[]> = {
   sparkle: ['M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z', 'M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8Z'],
   upload: ['M12 16V4', 'M7 9l5-5 5 5', 'M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3'],
   download: ['M12 4v12', 'M7 11l5 5 5-5', 'M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3'],
+  'mic-off': ['M15 9.3V6a3 3 0 0 0-5.7-1.3', 'M9 9v3a3 3 0 0 0 5.1 2.1', 'M19 11a7 7 0 0 1-1.2 3.9', 'M5 11a7 7 0 0 0 11.1 5.7', 'M12 18v3', 'M3 3l18 18'],
+  pointer: ['M6 4l12 6.5-5.5 1.5L10.5 18Z', 'M13 13l4.5 4.5'],
 }
 </script>
 

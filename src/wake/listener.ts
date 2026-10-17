@@ -1,4 +1,4 @@
-import { FATAL_RECOGNITION_ERRORS, createRecognition, speechRecognitionSupported } from '../audio/speech'
+import { FATAL_RECOGNITION_ERRORS, createRecognition, isIOS, speechRecognitionSupported } from '../audio/speech'
 import type { Recognition } from '../audio/speech'
 import { matchesWakePhrase } from './match'
 import type { WakeSensitivity } from './match'
@@ -18,7 +18,11 @@ export class WakeWordListener {
   private onWake: () => void
   private onFatal: (error: string) => void
 
-  static supported = speechRecognitionSupported
+  /**
+   * Safari on iPhone/iPad stops recognition after a pause and refuses to restart it without a
+   * tap, so an always-on wake word can't work there; calls start with the mic button instead.
+   */
+  static supported = (): boolean => speechRecognitionSupported() && !isIOS()
 
   constructor(onWake: () => void, onFatal: (error: string) => void) {
     this.onWake = onWake

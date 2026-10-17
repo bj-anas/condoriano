@@ -6,7 +6,33 @@ let micContext: AudioContext | null = null
 let playbackContext: AudioContext | null = null
 const loaded = new WeakMap<AudioContext, Set<string>>()
 
-export const PLAYBACK_RATE = 24000
+/** Gemini Live sends 24 kHz audio; the player converts it to the device's own rate. */
+export const SOURCE_RATE = 24000
+
+type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
+
+/**
+ * iOS Safari: mark the page as a voice call, so audio plays even with the silent switch on
+ * and the mic and speaker can run together. Ignored by browsers without the API.
+ */
+export function useVoiceCallAudioSession(): void {
+  const session = (navigator as AudioSessionNavigator).audioSession
+  if (session) session.type = 'play-and-record'
+}
+
+/** Resumes a context that is `suspended`, or `interrupted` (iOS, e.g. when the mic starts). */
+async function wake(ctx: AudioContext): Promise<void> {
+  if (ctx.state !== 'running') await ctx.resume().catch(() => {})
+}
+
+function create(): AudioContext {
+  const ctx = new AudioContext({ latencyHint: 'interactive' })
+  // iOS can interrupt audio at any time (mic starting, other apps); try to come back.
+  ctx.addEventListener('statechange', () => {
+    if ((ctx.state as string) === 'interrupted') void wake(ctx)
+  })
+  return ctx
+}
 
 export function workletUrl(name: string): string {
   return `${import.meta.env.BASE_URL}worklets/${name}`
@@ -21,17 +47,22 @@ async function ensureModule(ctx: AudioContext, name: string): Promise<void> {
 }
 
 export async function getMicContext(): Promise<AudioContext> {
-  micContext ??= new AudioContext({ latencyHint: 'interactive' })
-  if (micContext.state === 'suspended') await micContext.resume()
+  micContext ??= create()
+  await wake(micContext)
   await ensureModule(micContext, 'capture.js')
   return micContext
 }
 
 export async function getPlaybackContext(): Promise<AudioContext> {
-  playbackContext ??= new AudioContext({ sampleRate: PLAYBACK_RATE, latencyHint: 'interactive' })
-  if (playbackContext.state === 'suspended') await playbackContext.resume()
+  playbackContext ??= create()
+  await wake(playbackContext)
   await ensureModule(playbackContext, 'player.js')
   return playbackContext
+}
+
+/** Wakes both contexts again; called after the mic starts, which can interrupt playback on iOS. */
+export async function resumeAudio(): Promise<void> {
+  await Promise.all([micContext, playbackContext].map((ctx) => (ctx ? wake(ctx) : undefined)))
 }
 
 /** Call from a click/keydown handler so later wake-word calls can start audio without one. */

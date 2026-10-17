@@ -42,6 +42,29 @@ function recognitionCtor(): RecognitionCtor | null {
 
 export const speechRecognitionSupported = (): boolean => recognitionCtor() !== null
 
+/** iPhone and iPad, including iPadOS which reports itself as a Mac with a touch screen. */
+export function isIOS(): boolean {
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+/** A plain-language explanation for a speech recognition error code. */
+export function recognitionErrorMessage(code: string): string {
+  switch (code) {
+    case 'service-not-allowed':
+      return isIOS()
+        ? 'Speech recognition is off on this device. Turn on Dictation in iOS Settings → General → Keyboard, or use Gemini Live (it does not need it).'
+        : 'This browser blocked its speech service. Use Chrome or Edge, or use Gemini Live (it does not need it).'
+    case 'not-allowed':
+      return 'Microphone or speech recognition access was denied. Allow it for this site in the browser settings.'
+    case 'audio-capture':
+      return 'No microphone was found.'
+    case 'network':
+      return 'Speech recognition needs an internet connection.'
+    default:
+      return `Speech recognition failed (${code}).`
+  }
+}
+
 export function createRecognition(lang = 'en-US'): Recognition {
   const Ctor = recognitionCtor()
   if (!Ctor) throw new Error('Speech recognition is not supported in this browser. Use Chrome or Edge.')

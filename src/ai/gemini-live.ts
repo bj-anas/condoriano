@@ -1,6 +1,7 @@
 import { GoogleGenAI, Modality, Type } from '@google/genai'
 import type { FunctionCall, FunctionResponse, LiveServerMessage, Session } from '@google/genai'
 import { Microphone } from '../audio/microphone'
+import { resumeAudio } from '../audio/context'
 import { VoicePlayer } from '../audio/player'
 import { base64ToBytes, bytesToBase64 } from '../audio/encoding'
 import { getKnowledgeBase } from '../knowledge'
@@ -54,6 +55,8 @@ export class GeminiLiveEngine implements VoiceEngine {
       else this.setState(this.turnDone ? 'listening' : 'thinking')
     }
     await this.mic.start()
+    // On iOS, opening the mic can interrupt the player that was just created.
+    await resumeAudio()
     this.mic.onChunk = ({ pcm, rms }) => {
       this.ctx.events.onMicLevel(rms)
       if (!this.session || this.toolPending || this.reconnecting) return

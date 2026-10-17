@@ -1,4 +1,4 @@
-import { getMicContext, rmsOf } from './context'
+import { getMicContext, rmsOf, useVoiceCallAudioSession } from './context'
 
 export interface MicChunk {
   /** 100 ms of 16 kHz mono PCM16, little-endian */
@@ -26,6 +26,7 @@ export class Microphone {
   onChunk: ((chunk: MicChunk) => void) | null = null
 
   async start(): Promise<void> {
+    useVoiceCallAudioSession()
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },

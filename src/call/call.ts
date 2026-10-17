@@ -5,6 +5,7 @@ import { AiError, toAiError } from '../ai/errors'
 import type { CallState, ChatTurn, EngineEvents, EngineKind, ModelOption, Role, VoiceEngine } from '../ai/types'
 import { MicrophoneError } from '../audio/microphone'
 import { hasUserActivation, unlockAudio } from '../audio/context'
+import { recognitionErrorMessage } from '../audio/speech'
 import { getKnowledgeBase, loadKnowledgeBase } from '../knowledge'
 import { isSetUp, settings } from '../stores/settings'
 import { notify } from '../stores/notifications'
@@ -445,10 +446,7 @@ const wakeListener = new WakeWordListener(
     notify({
       kind: 'warning',
       title: 'Wake word stopped',
-      message:
-        error === 'not-allowed'
-          ? 'The browser blocked speech recognition. Allow the microphone, then click the wake word status.'
-          : `Speech recognition failed (${error}). Click the wake word status to retry.`,
+      message: `${recognitionErrorMessage(error)} Use the mic button, or click the wake word status to retry.`,
     })
   },
 )

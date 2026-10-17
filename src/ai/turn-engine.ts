@@ -1,5 +1,6 @@
 import { Microphone } from '../audio/microphone'
-import { FATAL_RECOGNITION_ERRORS, cancelSpeech, createRecognition, speak } from '../audio/speech'
+import { resumeAudio } from '../audio/context'
+import { FATAL_RECOGNITION_ERRORS, cancelSpeech, createRecognition, recognitionErrorMessage, speak } from '../audio/speech'
 import type { Recognition } from '../audio/speech'
 import { getKnowledgeBase } from '../knowledge'
 import { AiError, toAiError } from './errors'
@@ -52,6 +53,7 @@ export class TurnEngine implements VoiceEngine {
   async start(): Promise<void> {
     this.setState('connecting')
     await this.mic.start()
+    await resumeAudio()
     this.mic.onChunk = ({ rms }) => this.ctx.events.onMicLevel(rms)
     this.recognition = createRecognition('en-US')
     this.recognition.continuous = true
@@ -71,7 +73,7 @@ export class TurnEngine implements VoiceEngine {
     this.recognition.onerror = (e) => {
       if (FATAL_RECOGNITION_ERRORS.has(e.error)) {
         this.listening = false
-        this.ctx.events.onError(new AiError('unknown', `Speech recognition stopped (${e.error}).`), this.currentModel)
+        this.ctx.events.onError(new AiError('unknown', recognitionErrorMessage(e.error)), this.currentModel)
       }
     }
     // Chrome ends continuous recognition after a while; restart it while we should be listening.
