@@ -2,7 +2,7 @@
  * Long-lived audio contexts. Browsers only let an AudioContext run after the user has
  * interacted with the page once, so they are created lazily and resumed on every call.
  */
-import { isIOS } from './speech'
+import { isIOS, unlockSpeech } from './speech'
 import { log } from '../stores/diag'
 
 let micContext: AudioContext | null = null
@@ -23,8 +23,9 @@ type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
  */
 export function useVoiceCallAudioSession(): void {
   const session = (navigator as AudioSessionNavigator).audioSession
-  if (session) session.type = 'play-and-record'
-  log(`audioSession: ${session ? session.type : 'not supported'}`)
+  if (!session || session.type === 'play-and-record') return
+  session.type = 'play-and-record'
+  log(`audioSession: ${session.type}`)
 }
 
 /** Resumes a context that is `suspended`, or `interrupted` (iOS, e.g. when the mic starts). */
@@ -110,8 +111,17 @@ export async function resumeAudio(): Promise<void> {
 
 /** Call from a click/keydown handler so later wake-word calls can start audio without one. */
 export function unlockAudio(): void {
+  // Order matters on iOS: switch to voice-call mode before any audio exists, so opening the
+  // mic later doesn't switch modes mid-call and suspend playback.
+  useVoiceCallAudioSession()
+  unlockSpeech()
   void getMicContext().catch(() => {})
   void getPlaybackContext().catch(() => {})
+}
+
+/** True when the voice player's context is running (iOS can leave it suspended). */
+export function playbackRunning(): boolean {
+  return playbackContext?.state === 'running'
 }
 
 export function hasUserActivation(): boolean {

@@ -1,3 +1,5 @@
+import { log } from '../stores/diag'
+
 /**
  * Thin wrappers around the browser Web Speech API (speech recognition + speech synthesis).
  * Used by the wake word and by the turn-based fallback engine.
@@ -86,25 +88,57 @@ export function englishVoices(): SpeechSynthesisVoice[] {
  * Speaks text sentence by sentence (Chrome cuts long utterances off after ~15 s).
  * Resolves when everything was spoken or `cancelSpeech()` was called.
  */
+let speechUnlocked = false
+
+/**
+ * iOS Safari only lets speechSynthesis talk if the first utterance starts inside a tap.
+ * Speaking a silent one from the tap handler unlocks it for the rest of the visit.
+ */
+export function unlockSpeech(): void {
+  if (speechUnlocked || !('speechSynthesis' in window)) return
+  const u = new SpeechSynthesisUtterance(' ')
+  u.volume = 0
+  speechSynthesis.speak(u)
+  speechUnlocked = true
+  log('speech: unlocked in tap')
+}
+
+/** If the browser voice hasn't started after this long, assume it was blocked. */
+const SPEECH_START_TIMEOUT_MS = 4000
+
 export function speak(text: string, voiceURI: string): Promise<void> {
   return new Promise((resolve) => {
     if (!('speechSynthesis' in window)) return resolve()
+    let finished = false
+    const finish = (reason: string) => {
+      if (finished) return
+      finished = true
+      clearTimeout(startTimer)
+      clearTimeout(endTimer)
+      log(`speech: ${reason}`)
+      resolve()
+    }
+    // Never hang on "Speaking": give up if it doesn't start, or runs far past its expected length.
+    const startTimer = setTimeout(() => {
+      speechSynthesis.cancel()
+      finish('did not start (blocked by the browser?)')
+    }, SPEECH_START_TIMEOUT_MS)
+    const expectedMs = (text.split(/\s+/).length / 2.2) * 1000 + 8000
+    const endTimer = setTimeout(() => finish('timed out'), expectedMs)
     speechSynthesis.cancel()
     const voice = speechSynthesis.getVoices().find((v) => v.voiceURI === voiceURI) ?? englishVoices()[0]
     const sentences = text.match(/[^.!?]+[.!?]*\s*/g) ?? [text]
     let remaining = sentences.length
     const done = () => {
-      if (--remaining <= 0) resolve()
+      if (--remaining <= 0) finish('done')
     }
     for (const sentence of sentences) {
       const u = new SpeechSynthesisUtterance(sentence.trim())
       if (voice) u.voice = voice
       u.lang = voice?.lang ?? 'en-US'
+      u.onstart = () => clearTimeout(startTimer)
       u.onend = done
-      u.onerror = () => {
-        remaining = 0
-        resolve()
-      }
+      u.onerror = (e) => finish(`error ${e.error}`)
       speechSynthesis.speak(u)
     }
   })

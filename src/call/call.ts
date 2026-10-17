@@ -4,8 +4,8 @@ import { MODELS, isComplexQuestion, modelById } from '../ai/models'
 import { AiError, toAiError } from '../ai/errors'
 import type { CallState, ChatTurn, EngineEvents, EngineKind, ModelOption, Role, VoiceEngine } from '../ai/types'
 import { MicrophoneError } from '../audio/microphone'
-import { hasUserActivation, unlockAudio } from '../audio/context'
-import { recognitionErrorMessage } from '../audio/speech'
+import { hasUserActivation, playbackRunning, resumeAudio, unlockAudio } from '../audio/context'
+import { isIOS, recognitionErrorMessage } from '../audio/speech'
 import { getKnowledgeBase, loadKnowledgeBase } from '../knowledge'
 import { isSetUp, settings } from '../stores/settings'
 import { notify } from '../stores/notifications'
@@ -247,6 +247,7 @@ async function runEngine(model: ModelOption, history: ChatTurn[]): Promise<void>
     await next.start()
     if (engine !== next) return
     engineStarted = true
+    if (model.engine === 'live') void checkSoundOnIOS(next)
     if (pendingImage) {
       next.sendImage(pendingImage)
       pendingImage = null
@@ -256,6 +257,23 @@ async function runEngine(model: ModelOption, history: ChatTurn[]): Promise<void>
     next.end()
     await handleEngineError(err, model)
   }
+}
+
+/**
+ * iOS can leave audio suspended until the next tap. If the voice player still isn't running
+ * shortly after the call starts, offer a button: tapping it is the gesture iOS needs.
+ */
+async function checkSoundOnIOS(started: VoiceEngine): Promise<void> {
+  if (!isIOS()) return
+  await new Promise((r) => setTimeout(r, 1200))
+  if (engine !== started || playbackRunning()) return
+  log('sound: playback still suspended, asking for a tap')
+  notify({
+    kind: 'warning',
+    title: 'Tap to enable sound',
+    message: 'Your iPhone paused the audio when the mic turned on.',
+    actions: [{ label: 'Enable sound', run: () => { unlockAudio(); void resumeAudio() } }],
+  })
 }
 
 async function switchTo(model: ModelOption): Promise<void> {
