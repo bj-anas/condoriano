@@ -18,8 +18,6 @@ import {
   savedFolder,
 } from '../screenshots/folder'
 import type { WakeSensitivity } from '../wake/match'
-import { googleAuthSupported, googleClientId, loadGoogleIdentity } from '../auth/google'
-import { connectGoogle, disconnectGoogle, quota, refreshQuota } from '../stores/quota'
 
 const dialog = ref<HTMLDialogElement>()
 
@@ -65,13 +63,7 @@ watch(
   },
 )
 
-const quotaUpdated = computed(() =>
-  quota.asOf ? new Date(quota.asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-)
-
 onMounted(async () => {
-  // Load Google sign-in early, so its popup opens directly from the tap (not blocked).
-  if (googleClientId) void loadGoogleIdentity().catch(() => {})
   loadVoices()
   if ('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged', loadVoices)
   folderName.value = (await savedFolder())?.name ?? ''
@@ -302,55 +294,6 @@ function reset(): void {
           </button>
           <button v-if="folderName" type="button" class="button button--quiet" @click="forgetFolder">Forget</button>
         </div>
-      </section>
-
-      <section class="group" aria-labelledby="s-quota">
-        <h3 id="s-quota" class="group-title">Quota tracking</h3>
-        <p class="help">
-          Sign in with the Google account that owns your Gemini API key to see your real Gemini usage and
-          daily limits on the Gemini models. Read-only; numbers come from Google Cloud Monitoring and can lag a
-          few minutes. Groq models aren't tracked.
-        </p>
-        <p v-if="!googleAuthSupported" class="warning" role="note">
-          <AppIcon name="info" :size="18" />
-          Google sign-in works only on the deployed site, not when the app runs locally.
-        </p>
-        <p v-else-if="!googleClientId" class="warning" role="note">
-          <AppIcon name="info" :size="18" />
-          Not set up yet: this site needs a Google OAuth client ID (see the README, “Quota tracking”).
-        </p>
-        <template v-else-if="!quota.connected">
-          <button type="button" class="google-button" :disabled="quota.loading" @click="connectGoogle">
-            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-              <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.8 6.1C12.3 13.6 17.6 9.5 24 9.5z" />
-              <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z" />
-              <path fill="#FBBC05" d="M10.4 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.8-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.8-6.1z" />
-              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.4 0-11.7-4.1-13.6-9.9l-7.8 6.1C6.6 42.6 14.6 48 24 48z" />
-            </svg>
-            {{ quota.loading ? 'Signing in…' : settings.quotaSignedIn ? 'Reconnect Google account' : 'Sign in with Google' }}
-          </button>
-          <span v-if="settings.quotaSignedIn" class="help">Google sign-ins last an hour; reconnect to keep the rings updated.</span>
-        </template>
-        <template v-else>
-          <p class="help">Signed in as <strong>{{ quota.email || 'your Google account' }}</strong></p>
-          <label class="field">
-            <span class="label">Project</span>
-            <select v-model="settings.quotaProjectId" class="input">
-              <option v-for="p in quota.projects" :key="p.id" :value="p.id">{{ p.name }} ({{ p.id }})</option>
-            </select>
-            <span class="help">The Google Cloud project of your Gemini API key (AI Studio names it “gen-lang-client-…”).</span>
-          </label>
-          <div class="row">
-            <button type="button" class="button" :disabled="quota.loading" @click="refreshQuota">
-              {{ quota.loading ? 'Updating…' : quotaUpdated ? `Refresh (updated ${quotaUpdated})` : 'Refresh' }}
-            </button>
-            <button type="button" class="button button--quiet" @click="disconnectGoogle">Sign out</button>
-          </div>
-        </template>
-        <p v-if="quota.error" class="warning" role="alert">
-          <AppIcon name="alert" :size="18" />
-          {{ quota.error }}
-        </p>
       </section>
 
       <section class="group" aria-labelledby="s-debug">
@@ -639,35 +582,6 @@ function reset(): void {
   .icon {
     color: var(--color-warning);
     margin-top: 1px;
-  }
-}
-
-.google-button {
-  display: inline-flex;
-  align-items: center;
-  justify-self: start;
-  gap: 10px;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-outline);
-  background: oklch(0.98 0 0);
-  color: oklch(0.25 0 0);
-  font-weight: 600;
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    background: oklch(0.94 0 0);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: wait;
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: var(--focus-ring);
   }
 }
 

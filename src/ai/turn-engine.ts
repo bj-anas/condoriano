@@ -2,7 +2,6 @@ import { Microphone } from '../audio/microphone'
 import { resumeAudio } from '../audio/context'
 import { FATAL_RECOGNITION_ERRORS, cancelSpeech, createRecognition, isIOS, recognitionErrorMessage, speak } from '../audio/speech'
 import { log } from '../stores/diag'
-import { scheduleQuotaRefresh } from '../stores/quota'
 import type { Recognition } from '../audio/speech'
 import { getKnowledgeBase } from '../knowledge'
 import { AiError, toAiError } from './errors'
@@ -227,7 +226,6 @@ export class TurnEngine implements VoiceEngine {
       this.abort = new AbortController()
       try {
         const reply = await this.callModel(model, question)
-        if (model.provider === 'gemini') scheduleQuotaRefresh()
         return reply
       } catch (err) {
         if ((err as Error).name === 'AbortError') return null
