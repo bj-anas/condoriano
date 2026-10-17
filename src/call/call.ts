@@ -32,8 +32,6 @@ export const call = reactive({
   transcript: [] as TranscriptLine[],
   screenshot: null as { url: string; at: number } | null,
   wake: 'off' as WakeStatus,
-  /** iOS turn mode: waiting for a tap before Condoriano can listen */
-  tapToTalk: false,
   /** model id → time (ms) its free limit should be back */
   exhausted: {} as Record<string, number>,
 })
@@ -209,9 +207,6 @@ async function createEngine(model: ModelOption, history: ChatTurn[]): Promise<Vo
       if (!current()) return
       endCall()
       notify({ kind: 'info', title: 'Call ended', message: reason })
-    },
-    onTapToTalk(waiting) {
-      if (current()) call.tapToTalk = waiting
     },
   }
 
@@ -396,7 +391,6 @@ export function endCall(): void {
   clearTimeout(byeTimer)
   endAfterReply = saidGoodbye = false
   pendingImage = null
-  call.tapToTalk = false
   const ending = engine
   engine = null
   ending?.end()
@@ -418,11 +412,6 @@ export function pauseSpeaking(): void {
   lastActivity = Date.now()
 }
 
-/** iOS turn mode: the "Tap to talk" button. Must run inside the tap for Safari. */
-export function talk(): void {
-  engine?.talk?.()
-  lastActivity = Date.now()
-}
 
 /** Switches model from the picker. During a call, the conversation moves to the new model. */
 export async function chooseModel(id: string): Promise<void> {

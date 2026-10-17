@@ -1,7 +1,6 @@
 import { Microphone } from '../audio/microphone'
 import { resumeAudio } from '../audio/context'
-import { FATAL_RECOGNITION_ERRORS, cancelSpeech, createRecognition, isIOS, recognitionErrorMessage, speak } from '../audio/speech'
-import { log } from '../stores/diag'
+import { FATAL_RECOGNITION_ERRORS, cancelSpeech, createRecognition, recognitionErrorMessage, speak } from '../audio/speech'
 import type { Recognition } from '../audio/speech'
 import { getKnowledgeBase } from '../knowledge'
 import { AiError, toAiError } from './errors'
@@ -34,13 +33,10 @@ export class TurnEngine implements VoiceEngine {
   currentModel: ModelOption
   private mic = new Microphone()
   private recognition: Recognition | null = null
-  private levelTimer: ReturnType<typeof setInterval> | undefined
   private history: ChatTurn[]
   private pendingImage: string | null = null
   private abort: AbortController | null = null
   private listening = false
-  /** iOS Safari only starts speech recognition from a tap, so each turn waits for one. */
-  private readonly tapToTalk = isIOS()
   private busy = false
   private ended = false
   private state: CallState = 'idle'
@@ -56,23 +52,14 @@ export class TurnEngine implements VoiceEngine {
 
   async start(): Promise<void> {
     this.setState('connecting')
-    if (isIOS()) {
-      // iPhone/iPad: only one thing can hold the mic. Safari's speech recognition needs it, and
-      // recording mode also mutes the browser voice, so we don't open it ourselves. A steady
-      // "silence" tick keeps the silence hang-up working; recognition results count as speech.
-      log('turn: iOS, leaving the mic to Safari speech recognition')
-      this.levelTimer = setInterval(() => this.ctx.events.onMicLevel(0), 100)
-    } else {
-      await this.mic.start()
-      await resumeAudio()
-      this.mic.onChunk = ({ rms }) => this.ctx.events.onMicLevel(rms)
-    }
+    await this.mic.start()
+    await resumeAudio()
+    this.mic.onChunk = ({ rms }) => this.ctx.events.onMicLevel(rms)
     this.recognition = createRecognition('en-US')
     this.recognition.continuous = true
     this.recognition.interimResults = true
     this.recognition.onresult = (e) => {
       if (this.busy) return
-      this.ctx.events.onMicLevel(1)
       let interim = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const result = e.results[i]
@@ -91,14 +78,7 @@ export class TurnEngine implements VoiceEngine {
     }
     // Chrome ends continuous recognition after a while; restart it while we should be listening.
     this.recognition.onend = () => {
-      if (!this.listening || this.ended) return
-      if (this.tapToTalk) {
-        // Safari stopped listening (pause, no speech); restarting needs another tap.
-        this.listening = false
-        this.ctx.events.onTapToTalk(true)
-      } else {
-        this.startRecognition()
-      }
+      if (this.listening && !this.ended) this.startRecognition()
     }
 
     const greeting = this.ctx.history.length ? 'I switched to a backup model. Go ahead.' : this.ctx.greeting
@@ -127,7 +107,6 @@ export class TurnEngine implements VoiceEngine {
     this.abort?.abort()
     cancelSpeech()
     this.recognition?.abort()
-    clearInterval(this.levelTimer)
     this.mic.stop()
     this.setState('idle')
   }
@@ -169,27 +148,13 @@ export class TurnEngine implements VoiceEngine {
       void this.ask(SCREENSHOT_PROMPT, image)
       return
     }
-    if (this.tapToTalk) {
-      this.ctx.events.onTapToTalk(true)
-      return
-    }
     this.listening = true
-    this.startRecognition()
-  }
-
-  /** iOS: called from the "Tap to talk" button, inside the tap, which Safari requires. */
-  talk(): void {
-    if (!this.tapToTalk || this.busy || this.ended || this.listening) return
-    this.ctx.events.onTapToTalk(false)
-    this.listening = true
-    log('turn: tap to talk, listening')
     this.startRecognition()
   }
 
   /** Stop listening while Condoriano thinks and talks, so it never hears itself. */
   private pauseListening(): void {
     this.listening = false
-    this.ctx.events.onTapToTalk(false)
     this.recognition?.abort()
   }
 

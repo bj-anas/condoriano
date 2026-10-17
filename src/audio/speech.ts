@@ -54,7 +54,7 @@ export function recognitionErrorMessage(code: string): string {
   switch (code) {
     case 'service-not-allowed':
       return isIOS()
-        ? 'Safari refused speech recognition. Check that Siri and Dictation are on, or switch to Gemini Live, which works best on iPhone because it does not need it.'
+        ? 'Speech recognition isn’t supported on iPhone or iPad. Switch to Gemini 3.8 Live.'
         : 'This browser blocked its speech service. Use Chrome or Edge, or use Gemini Live (it does not need it).'
     case 'not-allowed':
       return 'Microphone or speech recognition access was denied. Allow it for this site in the browser settings.'
@@ -105,21 +105,6 @@ export function pickVoice(voiceURI: string): SpeechSynthesisVoice | undefined {
  * Speaks text sentence by sentence (Chrome cuts long utterances off after ~15 s).
  * Resolves when everything was spoken or `cancelSpeech()` was called.
  */
-let speechUnlocked = false
-
-/**
- * iOS Safari only lets speechSynthesis talk if the first utterance starts inside a tap.
- * Speaking a silent one from the tap handler unlocks it for the rest of the visit.
- */
-export function unlockSpeech(): void {
-  if (speechUnlocked || !('speechSynthesis' in window)) return
-  const u = new SpeechSynthesisUtterance(' ')
-  u.volume = 0
-  speechSynthesis.speak(u)
-  speechUnlocked = true
-  log('speech: unlocked in tap')
-}
-
 /** If the browser voice hasn't started after this long, assume it was blocked. */
 const SPEECH_START_TIMEOUT_MS = 4000
 

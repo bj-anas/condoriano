@@ -2,7 +2,7 @@
  * Long-lived audio contexts. Browsers only let an AudioContext run after the user has
  * interacted with the page once, so they are created lazily and resumed on every call.
  */
-import { isIOS, unlockSpeech } from './speech'
+import { isIOS } from './speech'
 import { log } from '../stores/diag'
 
 let micContext: AudioContext | null = null
@@ -114,7 +114,6 @@ export function unlockAudio(): void {
   // Order matters on iOS: switch to voice-call mode before any audio exists, so opening the
   // mic later doesn't switch modes mid-call and suspend playback.
   useVoiceCallAudioSession()
-  unlockSpeech()
   void getMicContext().catch(() => {})
   void getPlaybackContext().catch(() => {})
 }

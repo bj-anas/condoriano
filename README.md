@@ -75,3 +75,7 @@ sense on its own (it is searched and sent to the model alone).
   and openWakeWord both need a custom-trained model for "Hoy Condoriano". The browser's speech
   service hears the mic while it listens. Turn it off in Settings if you prefer the mic button.
   `src/wake/listener.ts` is the one place to swap in a real wake-word engine.
+- **iPhone and iPad:** Safari doesn't support speech recognition on iOS (and every iPhone
+  browser, Chrome and Firefox included, runs on Safari's engine). The wake word and the
+  turn-based models (Flash, Flash-Lite, Groq) all rely on it, so only **Gemini 3.8 Live** is
+  supported on iOS. Start calls with the mic button.
