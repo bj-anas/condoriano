@@ -4,9 +4,7 @@ A voice assistant for BDO. Say "Hoy Condoriano" (or tap the mic), and talk to it
 like a friend on a call. It answers from the knowledge base in `knowledge-base/`. Static web app,
 no backend: each player brings their own free Gemini API key.
 
-Stack: Vite, Vue 3 (Composition API), TypeScript, SCSS inside `.vue` files. Package manager: **pnpm only** (`npm install` is refused by a `preinstall` check).
-
-## Run it
+## Run it locally
 
 ```bash
 pnpm install
