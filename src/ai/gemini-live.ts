@@ -6,6 +6,7 @@ import { VoicePlayer } from '../audio/player'
 import { base64ToBytes, bytesToBase64 } from '../audio/encoding'
 import { getKnowledgeBase } from '../knowledge'
 import { AiError, fromLiveClose, toAiError } from './errors'
+import { log } from '../stores/diag'
 import type { CallState, EngineContext, ModelOption, VoiceEngine } from './types'
 
 const CONNECT_TIMEOUT_MS = 15_000
@@ -123,6 +124,7 @@ export class GeminiLiveEngine implements VoiceEngine {
    */
   private connect(): Promise<Session> {
     const generation = ++this.generation
+    log(`live: connecting to ${this.currentModel.apiModel}`)
     return new Promise<Session>((resolve, reject) => {
       let settled = false
       const fail = (err: AiError) => {
@@ -171,6 +173,7 @@ export class GeminiLiveEngine implements VoiceEngine {
               if (generation === this.generation) this.handleMessage(msg)
             },
             onclose: (e) => {
+              log(`live: closed ${e.code} ${e.reason || ''}`.trim())
               if (!settled) fail(fromLiveClose(e.code, e.reason))
               else if (generation === this.generation) this.handleClose(e)
             },
@@ -183,6 +186,7 @@ export class GeminiLiveEngine implements VoiceEngine {
           }
           settled = true
           clearTimeout(timer)
+          log('live: setup complete')
           resolve(session)
         })
         .catch((err: unknown) => fail(toAiError(err)))
@@ -224,7 +228,9 @@ export class GeminiLiveEngine implements VoiceEngine {
     const content = msg.serverContent
     if (!content) return
 
+    if (content.turnComplete) log('live: turn complete')
     if (content.interrupted) {
+      log('live: interrupted')
       // The player started talking over Condoriano: stop the voice right away.
       this.player.flush()
       this.dropAudio = false
@@ -265,6 +271,7 @@ export class GeminiLiveEngine implements VoiceEngine {
   }
 
   private answerToolCalls(calls: FunctionCall[]): void {
+    log(`live: tool call ${calls.map((c) => c.name).join(', ')}`)
     this.toolPending = true
     this.setState('thinking')
     const functionResponses: FunctionResponse[] = calls.map((call) => {

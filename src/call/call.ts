@@ -14,6 +14,7 @@ import { WakeWordListener } from '../wake/listener'
 import { prepareImage } from '../screenshots/image'
 import { FolderWatcher, folderPermission, savedFolder } from '../screenshots/folder'
 import { describeWait, msUntilPacificMidnight } from './time'
+import { log } from '../stores/diag'
 
 export interface TranscriptLine {
   id: number
@@ -225,6 +226,7 @@ async function createEngine(model: ModelOption, history: ChatTurn[]): Promise<Vo
 }
 
 async function runEngine(model: ModelOption, history: ChatTurn[]): Promise<void> {
+  log(`call: starting ${model.id} (${model.engine})`)
   const token = callToken
   call.model = model
   call.state = 'connecting'
@@ -264,6 +266,7 @@ async function switchTo(model: ModelOption): Promise<void> {
 }
 
 async function handleEngineError(err: unknown, model: ModelOption): Promise<void> {
+  log(`error (${model.id}): ${err instanceof Error ? err.message : String(err)}`)
   if (err instanceof MicrophoneError) {
     notify({ kind: 'error', title: 'Microphone problem', message: err.message })
     endCall()

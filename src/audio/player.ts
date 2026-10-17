@@ -1,4 +1,5 @@
-import { SOURCE_RATE, getPlaybackContext, rmsOf } from './context'
+import { SOURCE_RATE, getPlaybackContext, rmsOf, voiceOutput } from './context'
+import { diag, log } from '../stores/diag'
 import { pcm16ToFloat32 } from './encoding'
 
 /** Streams 24 kHz PCM16 voice through the player worklet. */
@@ -23,14 +24,18 @@ export class VoicePlayer {
     this.node = new AudioWorkletNode(ctx, 'player-processor', { outputChannelCount: [1] })
     this.analyser = ctx.createAnalyser()
     this.analyser.fftSize = 512
-    this.node.connect(this.analyser).connect(ctx.destination)
+    this.node.connect(this.analyser).connect(voiceOutput(ctx))
+    log(`player: ${ctx.sampleRate} Hz → ${voiceOutput(ctx) === ctx.destination ? 'speakers' : '<audio> element'}`)
     this.node.port.onmessage = (e: MessageEvent<{ type: 'started' | 'drained' }>) => {
       this.playing = e.data.type === 'started'
+      diag.playing = this.playing
+      log(`player ${e.data.type}`)
       this.onPlayingChange?.(this.playing)
     }
   }
 
   pushPcm16(bytes: Uint8Array): void {
+    if (diag.audioChunks++ === 0) log(`first audio chunk: ${bytes.byteLength} bytes`)
     const samples = this.resample(pcm16ToFloat32(bytes))
     this.node?.port.postMessage({ type: 'push', samples }, [samples.buffer])
   }

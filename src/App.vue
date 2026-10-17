@@ -6,6 +6,8 @@ import ModelPicker from './components/ModelPicker.vue'
 import SettingsDrawer from './components/SettingsDrawer.vue'
 import ToastStack from './components/ToastStack.vue'
 import AppIcon from './components/AppIcon.vue'
+import DebugPanel from './components/DebugPanel.vue'
+import { debugEnabled } from './stores/diag'
 import { armWake, sendScreenshot } from './call/call'
 import { isSetUp } from './stores/settings'
 import { useScreenshotInput } from './composables/useScreenshotInput'
@@ -26,6 +28,7 @@ onMounted(armWake)
     <SettingsDrawer />
   </template>
   <ToastStack />
+  <DebugPanel v-if="debugEnabled" />
 
   <Transition name="drop">
     <div v-if="dragging" class="drop-overlay" aria-hidden="true">
