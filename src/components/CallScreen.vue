@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
 import VoiceOrb from './VoiceOrb.vue'
 import TranscriptPanel from './TranscriptPanel.vue'
-import { call, firstModel, pauseSpeaking, retryWake, sendScreenshot, toggleCall } from '../call/call'
+import { call, firstModel, pauseSpeaking, retryWake, sendScreenshot, talk, toggleCall } from '../call/call'
 import { isIOS } from '../audio/speech'
 import { modelById } from '../ai/models'
 import { isImageFile } from '../screenshots/image'
@@ -35,7 +35,7 @@ const hint = computed(() => {
     case 'connecting':
       return 'Hold on a second.'
     case 'listening':
-      return 'Talk naturally. Say “bye” to hang up.'
+      return call.tapToTalk ? 'Tap the orb, then speak.' : 'Talk naturally. Say “bye” to hang up.'
     case 'thinking':
       return 'Looking it up.'
     case 'speaking':
@@ -115,9 +115,12 @@ function onFile(e: Event): void {
     </header>
 
     <main class="stage">
-      <VoiceOrb :state="call.state" />
+      <button v-if="call.tapToTalk" type="button" class="orb-button" aria-label="Tap to talk" @click="talk">
+        <VoiceOrb :state="call.state" />
+      </button>
+      <VoiceOrb v-else :state="call.state" />
       <div class="status" role="status" aria-live="polite">
-        <p class="status-main">{{ STATUS[call.state] }}</p>
+        <p class="status-main">{{ call.tapToTalk ? 'Tap to talk' : STATUS[call.state] }}</p>
         <p class="status-hint">{{ hint }}</p>
       </div>
 
@@ -277,6 +280,34 @@ function onFile(e: Event): void {
   justify-content: center;
   gap: 20px;
   min-height: 0;
+}
+
+.orb-button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  animation: tap-pulse 1.6s ease-in-out infinite;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+}
+
+@keyframes tap-pulse {
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-button {
+    animation: none;
+  }
 }
 
 .status {

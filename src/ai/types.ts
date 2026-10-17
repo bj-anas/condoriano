@@ -42,6 +42,8 @@ export interface EngineEvents {
   onError(error: unknown, model: ModelOption): void
   /** The engine stopped on its own (server closed, unrecoverable error). */
   onEnded(reason: string): void
+  /** iOS turn mode: true while the engine waits for a tap before it can listen. */
+  onTapToTalk(waiting: boolean): void
 }
 
 export interface VoiceEngine {
@@ -52,6 +54,8 @@ export interface VoiceEngine {
   sendImage(jpegBase64: string): void
   /** Pause button: stop the current spoken answer immediately. */
   stopSpeaking(): void
+  /** iOS turn mode: start listening; must be called directly from a tap. */
+  talk?(): void
   end(): void
   inputLevel(): number
   outputLevel(): number

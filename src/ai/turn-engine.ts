@@ -39,6 +39,8 @@ export class TurnEngine implements VoiceEngine {
   private pendingImage: string | null = null
   private abort: AbortController | null = null
   private listening = false
+  /** iOS Safari only starts speech recognition from a tap, so each turn waits for one. */
+  private readonly tapToTalk = isIOS()
   private busy = false
   private ended = false
   private state: CallState = 'idle'
@@ -89,7 +91,14 @@ export class TurnEngine implements VoiceEngine {
     }
     // Chrome ends continuous recognition after a while; restart it while we should be listening.
     this.recognition.onend = () => {
-      if (this.listening && !this.ended) this.startRecognition()
+      if (!this.listening || this.ended) return
+      if (this.tapToTalk) {
+        // Safari stopped listening (pause, no speech); restarting needs another tap.
+        this.listening = false
+        this.ctx.events.onTapToTalk(true)
+      } else {
+        this.startRecognition()
+      }
     }
 
     const greeting = this.ctx.history.length ? 'I switched to a backup model. Go ahead.' : this.ctx.greeting
@@ -160,13 +169,27 @@ export class TurnEngine implements VoiceEngine {
       void this.ask(SCREENSHOT_PROMPT, image)
       return
     }
+    if (this.tapToTalk) {
+      this.ctx.events.onTapToTalk(true)
+      return
+    }
     this.listening = true
+    this.startRecognition()
+  }
+
+  /** iOS: called from the "Tap to talk" button, inside the tap, which Safari requires. */
+  talk(): void {
+    if (!this.tapToTalk || this.busy || this.ended || this.listening) return
+    this.ctx.events.onTapToTalk(false)
+    this.listening = true
+    log('turn: tap to talk, listening')
     this.startRecognition()
   }
 
   /** Stop listening while Condoriano thinks and talks, so it never hears itself. */
   private pauseListening(): void {
     this.listening = false
+    this.ctx.events.onTapToTalk(false)
     this.recognition?.abort()
   }
 
