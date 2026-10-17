@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
+import QuotaRing from './QuotaRing.vue'
+import { quotaFor } from '../stores/quota'
 import VoiceOrb from './VoiceOrb.vue'
 import TranscriptPanel from './TranscriptPanel.vue'
 import { call, firstModel, pauseSpeaking, retryWake, sendScreenshot, talk, toggleCall } from '../call/call'
@@ -45,6 +47,8 @@ const hint = computed(() => {
 
 /** The model shown in the chip: the one answering now, or the one the next call will use. */
 const activeModel = computed(() => call.model && inCall.value ? call.model : firstModel())
+/** The model whose quota ring shows in the chip; a used-up chosen model still shows (red). */
+const ringModel = computed(() => activeModel.value ?? modelById(settings.model) ?? null)
 const modelLabel = computed(() => {
   if (settings.model === 'auto') return `Auto · ${activeModel.value?.label ?? 'no model left'}`
   return modelById(settings.model)?.label ?? 'Pick a model'
@@ -107,6 +111,7 @@ function onFile(e: Event): void {
       <button type="button" class="chip" @click="openModelPicker()">
         <AppIcon name="sparkle" :size="16" />
         <span class="chip-label">{{ modelLabel }}</span>
+        <QuotaRing v-if="ringModel && quotaFor(ringModel.id)" :info="quotaFor(ringModel.id)!" :label="ringModel.label" :size="18" align="center" />
         <AppIcon name="chevron-down" :size="16" />
       </button>
       <button type="button" class="icon-button" aria-label="Settings" @click="ui.settingsOpen = true">

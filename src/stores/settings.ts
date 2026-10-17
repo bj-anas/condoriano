@@ -20,6 +20,10 @@ export interface Settings {
   watchScreenshotFolder: boolean
   /** Show the diagnostics panel (audio and connection events) */
   debugMode: boolean
+  /** Google Cloud project whose Gemini quota is tracked (the AI Studio project) */
+  quotaProjectId: string
+  /** The user connected a Google account for quota tracking (the token itself is never saved) */
+  quotaSignedIn: boolean
   /** Model ids the Gemini key can use, from the key check (empty = unknown) */
   geminiModels: string[]
 }
@@ -42,6 +46,8 @@ const DEFAULTS: Settings = {
   watchScreenshotFolder: false,
   geminiModels: [],
   debugMode: false,
+  quotaProjectId: '',
+  quotaSignedIn: false,
 }
 
 function sanitize(input: unknown): Partial<Settings> {

@@ -69,6 +69,36 @@ weighted lower than prose, and the glossary and synonyms used to widen each ques
 Every file needs `category`, `patch_date` and `sources` frontmatter, and every `##` section must make
 sense on its own (it is searched and sent to the model alone).
 
+## Quota tracking (optional)
+
+Settings → **Quota tracking** shows your **real** Gemini usage and daily limits as rings on the Gemini
+models (model picker and header chip). Google doesn't expose quota to API keys, so this signs in with
+your Google account (read-only) and reads Google Cloud Monitoring
+(`generativelanguage.googleapis.com/quota/generate_content_free_tier_requests/usage` and `/limit`).
+Numbers can lag 1–4 minutes. Groq models aren't tracked. The sign-in lasts an hour (Google's token
+lifetime); the token is kept in memory only.
+
+**Production only:** Google sign-in works on the deployed site (the GitHub Pages build). When you run
+the app locally with `pnpm dev`, it is turned off and Settings says so.
+
+One-time setup (needs a Google OAuth client ID, which is public, not a secret):
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/), pick (or create) a project.
+2. **APIs & Services → Library:** enable **Cloud Monitoring API** and **Cloud Resource Manager API**
+3. **Google Auth Platform → Branding:** app name e.g *Condoriano*, User type *External*
+4. **Google Auth Platform → Audience:** add your
+   email (and your friend's) under **Test users**
+5. **Google Auth Platform → Data access:** Add or remove scopes: add
+    - openid
+    - .../auth/userinfo.email
+    - https://www.googleapis.com/auth/monitoring.read
+    - https://www.googleapis.com/auth/cloud-platform.read-only
+
+6. **Google Auth Platform  → Clients → Create Client:** type *Web application*.
+   Authorized JavaScript origins: your site, e.g. `https://bj-anas.github.io`.
+7. Copy the client ID into the github repository: **Settings → Secrets and variables → Actions → Variables** →
+   new variable `GOOGLE_CLIENT_ID`, then redeploy.
+
 ## Known limits
 
 - **Wake word:** it uses the browser's speech recognition with fuzzy matching, because Porcupine

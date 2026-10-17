@@ -2,6 +2,7 @@ import { Microphone } from '../audio/microphone'
 import { resumeAudio } from '../audio/context'
 import { FATAL_RECOGNITION_ERRORS, cancelSpeech, createRecognition, isIOS, recognitionErrorMessage, speak } from '../audio/speech'
 import { log } from '../stores/diag'
+import { scheduleQuotaRefresh } from '../stores/quota'
 import type { Recognition } from '../audio/speech'
 import { getKnowledgeBase } from '../knowledge'
 import { AiError, toAiError } from './errors'
@@ -225,7 +226,9 @@ export class TurnEngine implements VoiceEngine {
       this.currentModel = model
       this.abort = new AbortController()
       try {
-        return await this.callModel(model, question)
+        const reply = await this.callModel(model, question)
+        if (model.provider === 'gemini') scheduleQuotaRefresh()
+        return reply
       } catch (err) {
         if ((err as Error).name === 'AbortError') return null
         const error = toAiError(err)
@@ -251,7 +254,11 @@ export class TurnEngine implements VoiceEngine {
     }
     if (model.provider === 'groq') {
       if (!this.opts.keys.groq) throw new AiError('auth', 'Add a Groq key in Settings to use Groq models.')
-      return groqComplete({ apiKey: this.opts.keys.groq, ...request, system: request.system + NO_WEB_SEARCH_NOTE })
+      return groqComplete({
+        apiKey: this.opts.keys.groq,
+        ...request,
+        system: request.system + NO_WEB_SEARCH_NOTE,
+      })
     }
     return geminiComplete({ apiKey: this.opts.keys.gemini, ...request, webSearch: true })
   }

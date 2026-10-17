@@ -15,6 +15,7 @@ import { prepareImage } from '../screenshots/image'
 import { FolderWatcher, folderPermission, savedFolder } from '../screenshots/folder'
 import { describeWait, msUntilPacificMidnight } from './time'
 import { log } from '../stores/diag'
+import { scheduleQuotaRefresh } from '../stores/quota'
 
 export interface TranscriptLine {
   id: number
@@ -122,6 +123,7 @@ function handleQuota(model: ModelOption, error: AiError): ModelOption | null {
     ? Date.now() + msUntilPacificMidnight()
     : Date.now() + (error.retryAfterSec ?? DEFAULT_QUOTA_WAIT_S) * 1000
   call.exhausted[model.id] = until
+  if (model.provider === 'gemini') scheduleQuotaRefresh()
   const back = error.daily ? 'Its daily limit resets at midnight Pacific time.' : `It should be back ${describeWait(until)}.`
   const next = settings.model === 'auto' ? autoModel() : null
   const changeModel = { label: 'Change model', run: () => openModelPicker() }
@@ -254,7 +256,10 @@ async function runEngine(model: ModelOption, history: ChatTurn[]): Promise<void>
     await next.start()
     if (engine !== next) return
     engineStarted = true
-    if (model.engine === 'live') void checkSoundOnIOS(next)
+    if (model.engine === 'live') {
+      scheduleQuotaRefresh()
+      void checkSoundOnIOS(next)
+    }
     if (pendingImage) {
       next.sendImage(pendingImage)
       pendingImage = null

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
+import QuotaRing from './QuotaRing.vue'
+import { quotaFor } from '../stores/quota'
 import { MODELS } from '../ai/models'
 import type { ModelOption } from '../ai/types'
 import { autoModel, call, chooseModel, unavailableReason } from '../call/call'
@@ -96,6 +98,7 @@ function onBackdrop(e: MouseEvent): void {
             <span class="row-main">
               <span class="name">{{ model.label }}</span>
               <span class="desc">{{ model.description }}</span>
+              <span class="badges-row">
               <span class="badges">
                 <span class="badge" :data-tone="model.engine === 'live' ? 'primary' : 'neutral'">
                   {{ model.engine === 'live' ? 'Real-time voice' : 'Turn-based voice' }}
@@ -110,6 +113,8 @@ function onBackdrop(e: MouseEvent): void {
                   {{ reason.startsWith('Needs') ? `${reason} · add it in Settings` : reason }}
                 </span>
                 <span v-else-if="unlisted" class="badge" data-tone="warning">Not listed for your key</span>
+              </span>
+              <QuotaRing v-if="quotaFor(model.id)" :info="quotaFor(model.id)!" :label="model.label" />
               </span>
             </span>
             <AppIcon v-if="settings.model === model.id" name="check" class="selected" />
@@ -206,6 +211,7 @@ function onBackdrop(e: MouseEvent): void {
 }
 
 .row {
+  position: relative;
   width: 100%;
   display: flex;
   gap: 12px;
@@ -251,6 +257,7 @@ function onBackdrop(e: MouseEvent): void {
 }
 
 .name {
+  padding-inline-end: 28px;
   font-weight: 700;
 }
 
@@ -270,11 +277,18 @@ function onBackdrop(e: MouseEvent): void {
   line-height: 1.4;
 }
 
+.badges-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
 .badges {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 4px;
 }
 
 .badge {
@@ -299,10 +313,14 @@ function onBackdrop(e: MouseEvent): void {
   }
 }
 
+/* Pinned to the corner so it doesn't push the quota ring away from the right edge. */
 .selected {
+  position: absolute;
+  top: 16px;
+  right: 14px;
   color: var(--color-primary);
-  margin-top: 2px;
 }
+
 
 .foot {
   margin: 0;
