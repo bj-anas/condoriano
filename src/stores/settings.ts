@@ -34,7 +34,7 @@ const DEFAULTS: Settings = {
   browserVoice: '',
   wakeWordEnabled: true,
   wakeSensitivity: 'medium',
-  silenceTimeoutSec: 60,
+  silenceTimeoutSec: 10,
   showTranscript: false,
   language: 'English',
   watchScreenshotFolder: false,
@@ -52,9 +52,26 @@ function sanitize(input: unknown): Partial<Settings> {
   return out as Partial<Settings>
 }
 
+/** Bump when a saved setting must be upgraded; see migrate(). */
+const SETTINGS_VERSION = 2
+const VERSION_KEY = 'condoriano.settings.version'
+
+/** v2: the silence hang-up default went from 60 s to 10 s, so saved old defaults move too. */
+function migrate(saved: Partial<Settings>): Partial<Settings> {
+  let version = 1
+  try {
+    version = Number(localStorage.getItem(VERSION_KEY)) || 1
+    localStorage.setItem(VERSION_KEY, String(SETTINGS_VERSION))
+  } catch {
+    return saved
+  }
+  if (version < 2 && saved.silenceTimeoutSec === 60) saved.silenceTimeoutSec = 10
+  return saved
+}
+
 function load(): Settings {
   try {
-    return { ...DEFAULTS, ...sanitize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')) }
+    return { ...DEFAULTS, ...migrate(sanitize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'))) }
   } catch {
     return { ...DEFAULTS }
   }
@@ -71,7 +88,7 @@ watch(
       // storage blocked (private mode); settings last for this visit only
     }
   },
-  { deep: true },
+  { deep: true, immediate: true },
 )
 
 export const isSetUp = computed(() => !!settings.userName.trim() && !!settings.geminiKey.trim())

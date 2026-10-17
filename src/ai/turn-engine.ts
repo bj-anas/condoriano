@@ -1,6 +1,7 @@
 import { Microphone } from '../audio/microphone'
 import { resumeAudio } from '../audio/context'
-import { FATAL_RECOGNITION_ERRORS, cancelSpeech, createRecognition, recognitionErrorMessage, speak } from '../audio/speech'
+import { FATAL_RECOGNITION_ERRORS, cancelSpeech, createRecognition, isIOS, recognitionErrorMessage, speak } from '../audio/speech'
+import { log } from '../stores/diag'
 import type { Recognition } from '../audio/speech'
 import { getKnowledgeBase } from '../knowledge'
 import { AiError, toAiError } from './errors'
@@ -33,6 +34,7 @@ export class TurnEngine implements VoiceEngine {
   currentModel: ModelOption
   private mic = new Microphone()
   private recognition: Recognition | null = null
+  private levelTimer: ReturnType<typeof setInterval> | undefined
   private history: ChatTurn[]
   private pendingImage: string | null = null
   private abort: AbortController | null = null
@@ -52,14 +54,23 @@ export class TurnEngine implements VoiceEngine {
 
   async start(): Promise<void> {
     this.setState('connecting')
-    await this.mic.start()
-    await resumeAudio()
-    this.mic.onChunk = ({ rms }) => this.ctx.events.onMicLevel(rms)
+    if (isIOS()) {
+      // iPhone/iPad: only one thing can hold the mic. Safari's speech recognition needs it, and
+      // recording mode also mutes the browser voice, so we don't open it ourselves. A steady
+      // "silence" tick keeps the silence hang-up working; recognition results count as speech.
+      log('turn: iOS, leaving the mic to Safari speech recognition')
+      this.levelTimer = setInterval(() => this.ctx.events.onMicLevel(0), 100)
+    } else {
+      await this.mic.start()
+      await resumeAudio()
+      this.mic.onChunk = ({ rms }) => this.ctx.events.onMicLevel(rms)
+    }
     this.recognition = createRecognition('en-US')
     this.recognition.continuous = true
     this.recognition.interimResults = true
     this.recognition.onresult = (e) => {
       if (this.busy) return
+      this.ctx.events.onMicLevel(1)
       let interim = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const result = e.results[i]
@@ -107,6 +118,7 @@ export class TurnEngine implements VoiceEngine {
     this.abort?.abort()
     cancelSpeech()
     this.recognition?.abort()
+    clearInterval(this.levelTimer)
     this.mic.stop()
     this.setState('idle')
   }

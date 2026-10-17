@@ -181,7 +181,9 @@ async function createEngine(model: ModelOption, history: ChatTurn[]): Promise<Vo
       if (!current()) return
       const previous = call.state
       call.state = state
-      if (state !== 'listening') lastActivity = Date.now()
+      // Any state change counts as activity, so the silence countdown restarts when
+      // Condoriano finishes talking, not when he started.
+      lastActivity = Date.now()
       if (endAfterReply && state === 'speaking') saidGoodbye = true
       if (endAfterReply && saidGoodbye && state === 'listening' && previous === 'speaking') endCall()
     },
@@ -195,7 +197,7 @@ async function createEngine(model: ModelOption, history: ChatTurn[]): Promise<Vo
     },
     onMicLevel(rms) {
       if (!current()) return
-      if (rms > SPEECH_RMS) lastActivity = Date.now()
+      if (rms > SPEECH_RMS || call.state !== 'listening') lastActivity = Date.now()
       checkSilence()
     },
     onError(error, failedModel) {

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
 import KeyField from './KeyField.vue'
 import type { KeyStatus } from './KeyField.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import { LIVE_VOICES, MODELS } from '../ai/models'
+import { LIVE_VOICES, MODELS, modelById } from '../ai/models'
 import { englishVoices } from '../audio/speech'
 import { chooseModel } from '../call/call'
 import { checkGeminiKey, checkGroqKey } from '../call/keys'
@@ -20,6 +20,9 @@ import {
 import type { WakeSensitivity } from '../wake/match'
 
 const dialog = ref<HTMLDialogElement>()
+
+/** The Live voice only matters for Gemini Live, which Auto also starts with. */
+const usesLiveVoice = computed(() => settings.model === 'auto' || modelById(settings.model)?.engine === 'live')
 const geminiKey = ref(settings.geminiKey)
 const groqKey = ref(settings.groqKey)
 const voices = ref<SpeechSynthesisVoice[]>([])
@@ -34,6 +37,7 @@ const SENSITIVITIES: { value: WakeSensitivity; label: string }[] = [
   { value: 'high', label: 'High' },
 ]
 const TIMEOUTS = [
+  { value: 10, label: '10 seconds' },
   { value: 30, label: '30 seconds' },
   { value: 60, label: '1 minute' },
   { value: 120, label: '2 minutes' },
@@ -209,7 +213,7 @@ function reset(): void {
             </option>
           </select>
         </label>
-        <label class="field">
+        <label v-if="usesLiveVoice" class="field">
           <span class="label">Live voice</span>
           <select v-model="settings.liveVoice" class="input">
             <option v-for="v in LIVE_VOICES" :key="v" :value="v">{{ v }}</option>

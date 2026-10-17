@@ -54,7 +54,7 @@ export function recognitionErrorMessage(code: string): string {
   switch (code) {
     case 'service-not-allowed':
       return isIOS()
-        ? 'Speech recognition is off on this device. Turn on Dictation in iOS Settings → General → Keyboard, or use Gemini Live (it does not need it).'
+        ? 'Safari refused speech recognition. Check that Siri and Dictation are on, or switch to Gemini Live, which works best on iPhone because it does not need it.'
         : 'This browser blocked its speech service. Use Chrome or Edge, or use Gemini Live (it does not need it).'
     case 'not-allowed':
       return 'Microphone or speech recognition access was denied. Allow it for this site in the browser settings.'
