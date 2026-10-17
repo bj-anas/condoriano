@@ -1,10 +1,13 @@
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
+import { settings } from './settings'
 
 /**
- * In-memory diagnostics for remote debugging (mainly iOS audio). Shown only when the page URL
- * contains `?debug`; nothing is saved or sent anywhere.
+ * In-memory diagnostics for remote debugging (mainly iOS audio). Shown when debug mode is on
+ * in Settings, or when the page URL contains `?debug`. Nothing is saved or sent anywhere.
  */
-export const debugEnabled = new URLSearchParams(location.search).has('debug')
+const debugInUrl = new URLSearchParams(location.search).has('debug')
+
+export const debugEnabled = computed(() => debugInUrl || settings.debugMode)
 
 export const diag = reactive({
   lines: [] as string[],
@@ -13,7 +16,7 @@ export const diag = reactive({
 })
 
 export function log(message: string): void {
-  if (!debugEnabled) return
+  if (!debugEnabled.value) return
   const time = new Date().toISOString().slice(11, 19)
   diag.lines.push(`${time} ${message}`)
   if (diag.lines.length > 60) diag.lines.splice(0, diag.lines.length - 60)

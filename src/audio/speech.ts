@@ -84,6 +84,23 @@ export function englishVoices(): SpeechSynthesisVoice[] {
   return speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('en'))
 }
 
+/** The default backup voice. It ships with Chrome; other browsers fall back below. */
+export const DEFAULT_VOICE_NAME = 'Google UK English Male'
+
+/**
+ * The voice to speak with: the one chosen in Settings, otherwise Google UK English Male,
+ * otherwise any British English voice, otherwise the first English voice.
+ */
+export function pickVoice(voiceURI: string): SpeechSynthesisVoice | undefined {
+  const voices = speechSynthesis.getVoices()
+  return (
+    (voiceURI ? voices.find((v) => v.voiceURI === voiceURI) : undefined) ??
+    voices.find((v) => v.name === DEFAULT_VOICE_NAME) ??
+    voices.find((v) => v.lang.toLowerCase().replace('_', '-') === 'en-gb') ??
+    englishVoices()[0]
+  )
+}
+
 /**
  * Speaks text sentence by sentence (Chrome cuts long utterances off after ~15 s).
  * Resolves when everything was spoken or `cancelSpeech()` was called.
@@ -126,7 +143,7 @@ export function speak(text: string, voiceURI: string): Promise<void> {
     const expectedMs = (text.split(/\s+/).length / 2.2) * 1000 + 8000
     const endTimer = setTimeout(() => finish('timed out'), expectedMs)
     speechSynthesis.cancel()
-    const voice = speechSynthesis.getVoices().find((v) => v.voiceURI === voiceURI) ?? englishVoices()[0]
+    const voice = pickVoice(voiceURI)
     const sentences = text.match(/[^.!?]+[.!?]*\s*/g) ?? [text]
     let remaining = sentences.length
     const done = () => {

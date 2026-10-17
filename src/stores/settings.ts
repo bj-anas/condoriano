@@ -18,6 +18,8 @@ export interface Settings {
   /** Only English for now; kept so the prompt's {language} placeholder is ready for Darija. */
   language: 'English'
   watchScreenshotFolder: boolean
+  /** Show the diagnostics panel (audio and connection events) */
+  debugMode: boolean
   /** Model ids the Gemini key can use, from the key check (empty = unknown) */
   geminiModels: string[]
 }
@@ -39,6 +41,7 @@ const DEFAULTS: Settings = {
   language: 'English',
   watchScreenshotFolder: false,
   geminiModels: [],
+  debugMode: false,
 }
 
 function sanitize(input: unknown): Partial<Settings> {

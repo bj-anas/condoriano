@@ -5,7 +5,7 @@ import KeyField from './KeyField.vue'
 import type { KeyStatus } from './KeyField.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
 import { LIVE_VOICES, MODELS, modelById } from '../ai/models'
-import { englishVoices } from '../audio/speech'
+import { DEFAULT_VOICE_NAME, englishVoices } from '../audio/speech'
 import { chooseModel } from '../call/call'
 import { checkGeminiKey, checkGroqKey } from '../call/keys'
 import { exportSettings, importSettings, resetSettings, settings } from '../stores/settings'
@@ -223,7 +223,7 @@ function reset(): void {
         <label class="field">
           <span class="label">Backup voice</span>
           <select v-model="settings.browserVoice" class="input">
-            <option value="">Default English voice</option>
+            <option value="">Default ({{ DEFAULT_VOICE_NAME }})</option>
             <option v-for="v in voices" :key="v.voiceURI" :value="v.voiceURI">{{ v.name }} ({{ v.lang }})</option>
           </select>
           <span class="help">Your browser's voice, used by turn-based models (Flash, Flash-Lite, Groq).</span>
@@ -293,6 +293,17 @@ function reset(): void {
             <AppIcon name="folder" :size="18" /> {{ folderName ? `Folder: ${folderName}` : 'Choose folder' }}
           </button>
           <button v-if="folderName" type="button" class="button button--quiet" @click="forgetFolder">Forget</button>
+        </div>
+      </section>
+
+      <section class="group" aria-labelledby="s-debug">
+        <h3 id="s-debug" class="group-title">Diagnostics</h3>
+        <div class="switch-row">
+          <span>
+            <span class="label">Debug mode</span>
+            <span class="help">Shows a log of audio and connection events at the bottom of the screen, to help find problems. Nothing is saved or sent.</span>
+          </span>
+          <ToggleSwitch v-model="settings.debugMode" label="Debug mode" />
         </div>
       </section>
 
